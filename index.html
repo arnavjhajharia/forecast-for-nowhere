@@ -49,6 +49,9 @@
   button.ghost { background: transparent; color: var(--cream); border: 1px solid rgba(239,228,207,.4); }
   #title { background: radial-gradient(ellipse at center, rgba(4,7,8,.45), rgba(4,7,8,.92)), url(img/8.jpg) center/cover; }
   .hide { display: none !important; }
+  #title { cursor: pointer; }
+  #start { animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(242,178,84,.55); } 50% { box-shadow: 0 0 0 14px rgba(242,178,84,0); } }
   @media (max-width: 640px) { #panel { grid-template-columns: 1fr; } #right { justify-content: center; } #knob { width: 64px; height: 64px; } }
 </style>
 </head>
@@ -299,8 +302,16 @@
   function showEnd() { ended = true; persist(); document.getElementById('end').classList.remove('hide'); }
   document.getElementById('keep').onclick = () => document.getElementById('end').classList.add('hide');
   document.getElementById('reset').onclick = () => { localStorage.removeItem('ffn-save'); location.reload(); };
+  // first 30 s: a tap ANYWHERE on the title (or Enter/Space) switches on, and the dial drifts onto the nearest station by itself unless the player grabs it first
+  let touched = false;
+  [wrap, knob].forEach(el => el.addEventListener('pointerdown', () => touched = true));
+  addEventListener('keydown', e => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') touched = true; if ((e.key === 'Enter' || e.key === ' ') && !document.getElementById('title').classList.contains('hide') && !started) { e.preventDefault(); document.getElementById('start').click(); } });
+  addEventListener('wheel', () => touched = true, { passive: true });
+  document.getElementById('title').addEventListener('click', e => { if (!started && e.target.id !== 'start') document.getElementById('start').click(); });
   document.getElementById('start').onclick = async () => {
+    if (started) return;
     const btn = document.getElementById('start'); btn.textContent = 'WARMING UP THE VALVES…'; btn.disabled = true;
+    if (!path) { const steps = [[700, 2.7], [1500, 3.0], [2300, 3.2]]; steps.forEach(([ms, v]) => setTimeout(() => { if (!touched && !path) setTarget(v); }, ms)); }
     const loaded = startAudio(); started = true;
     loaded.then(() => { buildScale(); buildLog(); });
     document.getElementById('title').classList.add('hide');
