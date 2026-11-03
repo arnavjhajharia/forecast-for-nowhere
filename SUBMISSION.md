@@ -23,9 +23,12 @@ whistle rises and falls. Stay on a broadcast long enough and it goes in your log
 in the gap between two of the others, where you could only hear faint counting pips before. The whole interface is the
 radio. There are no menus or buttons during play, only listening.
 
-**Why it fits "Experimental & Open Format":** the only mechanic is tuning, and the sound mix IS the game state. Signal
-strength drives voice gain, filter cutoff, distortion, static, whistle pitch, picture tearing and subtitle dropout all at once.
-Progress comes from attention (time actually spent listening), not from choices or reflexes.
+**Why it fits "Experimental & Open Format"** (paste after the description if there is room):
+- Break the mold: the whole interface is one radio dial. There are no menus, buttons or choices during play, only tuning and listening.
+- Clear intent: a lonely, funny shipping forecast for places that don't exist. Six voices, one shared mystery (the lighthouse), and a seventh station you earn by listening.
+- Craft: the sound mix IS the game state. Signal strength drives voice gain, filter cutoff, distortion, static, whistle pitch,
+  picture tearing and subtitle dropout all at once. Progress comes from attention (time actually spent listening), not from reflexes.
+- The gameplay video opens on the dial sweeping through static into the first station (the core mechanic in the first 8 s).
 
 **AI tools / disclosure (paste in the tools/notes field):**
 - Higgsfield (GPT Image 2.5): the 8 paintings (6 islands, the lighthouse, the radio desk) from original prompts with a shared style line. ~2 credits.
