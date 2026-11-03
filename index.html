@@ -50,6 +50,7 @@
   #title { background: radial-gradient(ellipse at center, rgba(4,7,8,.45), rgba(4,7,8,.92)), url(img/8.jpg) center/cover; }
   .hide { display: none !important; }
   #title { cursor: pointer; }
+  #start { min-height: 44px; }
   #start { animation: pulse 1.6s ease-in-out infinite; }
   @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(242,178,84,.55); } 50% { box-shadow: 0 0 0 14px rgba(242,178,84,0); } }
   @media (max-width: 640px) { #panel { grid-template-columns: 1fr; } #right { justify-content: center; } #knob { width: 64px; height: 64px; } }
@@ -144,7 +145,7 @@
   wrap.addEventListener('pointermove', e => { if (drag === 'scale') fromScale(e); });
   function fromScale(e) { const r = wrap.getBoundingClientRect(); setTarget(FMIN + (e.clientX - r.left) / r.width * (FMAX - FMIN)); }
   const knob = document.getElementById('knob'); let kx = 0, kAng = 0;
-  knob.addEventListener('pointerdown', e => { drag = 'knob'; kx = e.clientX + e.clientY; knob.setPointerCapture(e.pointerId); });
+  knob.addEventListener('pointerdown', e => { drag = 'knob'; kx = e.clientX - e.clientY; knob.setPointerCapture(e.pointerId); });
   knob.addEventListener('pointermove', e => { if (drag !== 'knob') return; const v = e.clientX - e.clientY; const d = v - kx; kx = v; setTarget(target + d * 0.006); });
   addEventListener('pointerup', () => drag = null);
   addEventListener('wheel', e => { setTarget(target + Math.sign(e.deltaY || e.deltaX) * (e.shiftKey ? 0.01 : 0.04)); }, { passive: true });
