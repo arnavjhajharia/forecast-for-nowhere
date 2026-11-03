@@ -1,5 +1,7 @@
 # Forecast for Nowhere
 
+**Play:** [Playgama](https://playgama.ai/play/wydweupfpvcwcc) · [GitHub Pages](https://arnavjhajharia.github.io/forecast-for-nowhere/)
+
 A radio for islands that aren't there. You tune a shortwave dial between weather broadcasts for six imaginary islands.
 The stations bleed into each other, so the dial physically mixes their voices, carrier tones, static and heterodyne
 whistles. Stay on a station long enough to hear its broadcast and it goes in your log. Log all six and something starts
