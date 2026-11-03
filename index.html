@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Forecast for Nowhere: a radio for islands that aren't there</title>
+<meta name="description" content="Tune a shortwave dial between weather broadcasts for six imaginary islands. Stations bleed into each other. Listen long enough and a seventh one appears.">
+<meta property="og:title" content="Forecast for Nowhere">
+<meta property="og:description" content="A radio for islands that aren't there. Turn the dial. Headphones recommended.">
+<meta property="og:image" content="https://arnavjhajharia.github.io/forecast-for-nowhere/img/thumb.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Fraunces:opsz,wght@9..144,400;9..144,600&display=swap" rel="stylesheet">
+<style>
+  :root { --amber: #f2b45a; --ink: #0d1517; --panel: #2a1f17; --wood: #4a3122; --cream: #efe4cf; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #070b0c; color: var(--cream); font-family: 'IBM Plex Mono', monospace; overflow: hidden; touch-action: none; }
+  #app { position: fixed; inset: 0; display: flex; flex-direction: column; }
+  #view { position: relative; flex: 1 1 auto; min-height: 0; background: #000; }
+  canvas#scr { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  #label { position: absolute; left: 22px; top: 18px; font-family: 'Fraunces', serif; font-size: clamp(20px, 3.4vw, 40px); text-shadow: 0 2px 12px #000; transition: opacity .3s; }
+  #label small { display: block; font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: .2em; color: var(--amber); opacity: .85; }
+  #subs { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); width: min(92%, 860px); text-align: center; pointer-events: none; }
+  .sub { font-size: clamp(14px, 2vw, 20px); line-height: 1.35; padding: 4px 10px; background: rgba(0,0,0,.55); border-radius: 4px; display: inline-block; margin: 2px 0; }
+  .sub.b { font-size: clamp(12px, 1.6vw, 16px); filter: blur(.6px); transform: translateX(14px) skewX(-4deg); }
+  #panel { flex: 0 0 auto; background: linear-gradient(#3a2819, #23170f); border-top: 3px solid #120c08; padding: 12px 16px 14px; display: grid; grid-template-columns: 1fr auto; gap: 10px 18px; align-items: center; }
+  #scaleWrap { position: relative; height: 74px; background: linear-gradient(#f5e6c4, #e6d0a1); border-radius: 6px; box-shadow: inset 0 0 18px rgba(120,70,20,.55), 0 0 30px rgba(242,180,90,.25); overflow: hidden; cursor: ew-resize; color: #3b2a1a; }
+  #scale { position: absolute; inset: 0; }
+  .tick { position: absolute; bottom: 0; width: 1px; background: #5b4128; }
+  .num { position: absolute; bottom: 26px; transform: translateX(-50%); font-size: 11px; }
+  .isl { position: absolute; top: 4px; transform: translateX(-50%); font-family: 'Fraunces', serif; font-size: 12px; white-space: nowrap; color: #8a3b14; }
+  .isl.hidden { color: #6a5a40; font-style: italic; }
+  #needle { position: absolute; top: 0; bottom: 0; width: 2px; background: #c0281b; box-shadow: 0 0 6px #ff4b2b; }
+  #right { display: flex; gap: 14px; align-items: center; }
+  #knob { width: 74px; height: 74px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #6b4a33, #241710 70%); border: 3px solid #120c08; position: relative; cursor: grab; box-shadow: 0 4px 10px rgba(0,0,0,.6); }
+  #knob::after { content: ''; position: absolute; left: 50%; top: 6px; width: 4px; height: 18px; margin-left: -2px; background: var(--cream); border-radius: 2px; }
+  #meter { width: 76px; height: 44px; border-radius: 6px; background: #f0dfbb; position: relative; overflow: hidden; box-shadow: inset 0 0 10px rgba(80,40,10,.6); }
+  #mneedle { position: absolute; left: 50%; bottom: -4px; width: 2px; height: 42px; background: #1b1b1b; transform-origin: 50% 100%; }
+  #meter span { position: absolute; left: 4px; top: 2px; font-size: 9px; color: #6a4a2a; }
+  #log { grid-column: 1 / -1; display: flex; gap: 8px; flex-wrap: wrap; font-size: 11px; }
+  .slot { flex: 1 1 120px; background: rgba(0,0,0,.28); border-radius: 4px; padding: 5px 8px; position: relative; overflow: hidden; }
+  .slot i { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--amber); }
+  .slot.done { color: var(--amber); }
+  #hint { grid-column: 1 / -1; font-size: 11px; opacity: .65; text-align: center; min-height: 1em; }
+  .overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(4,7,8,.78); z-index: 5; text-align: center; padding: 24px; }
+  .overlay .card { max-width: 640px; }
+  .overlay h1 { font-family: 'Fraunces', serif; font-weight: 600; font-size: clamp(34px, 6vw, 64px); margin: 0 0 6px; }
+  .overlay p { line-height: 1.6; opacity: .9; }
+  button { font-family: inherit; font-size: 15px; background: var(--amber); color: #1a1006; border: 0; border-radius: 4px; padding: 12px 22px; cursor: pointer; letter-spacing: .08em; margin: 6px; }
+  button.ghost { background: transparent; color: var(--cream); border: 1px solid rgba(239,228,207,.4); }
+  #title { background: radial-gradient(ellipse at center, rgba(4,7,8,.45), rgba(4,7,8,.92)), url(img/8.jpg) center/cover; }
+  .hide { display: none !important; }
+  @media (max-width: 640px) { #panel { grid-template-columns: 1fr; } #right { justify-content: center; } #knob { width: 64px; height: 64px; } }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="view">
+    <canvas id="scr"></canvas>
+    <div id="label"></div>
+    <div id="subs"></div>
+  </div>
+  <div id="panel">
+    <div id="scaleWrap"><div id="scale"></div><div id="needle"></div></div>
+    <div id="right">
+      <div id="meter"><span>SIGNAL</span><div id="mneedle"></div></div>
+      <div id="knob" title="Drag to tune"></div>
+    </div>
+    <div id="log"></div>
+    <div id="hint">Drag the dial, the knob, or use ← → (hold Shift for fine tuning). Mouse wheel works too.</div>
+  </div>
+</div>
+
+<div class="overlay" id="title">
+  <div class="card">
+    <h1>Forecast for Nowhere</h1>
+    <p>A shortwave radio picks up weather broadcasts for six islands that are on no chart.<br>
+    Turn the dial. Stations bleed into each other. Stay on one long enough to hear it out, and it goes in your log.</p>
+    <p style="font-size:13px;opacity:.7">Headphones recommended · about 6–10 minutes · English subtitles</p>
+    <button id="start">SWITCH ON</button>
+  </div>
+</div>
+
+<div class="overlay hide" id="end">
+  <div class="card">
+    <h1>Goodnight, all stations.</h1>
+    <p>You heard every island, and the one who was reading them.<br>The radio is still on. They're still broadcasting.</p>
+    <button id="keep">KEEP LISTENING</button>
+    <button class="ghost" id="reset">START OVER</button>
+    <p style="font-size:12px;opacity:.6;margin-top:22px">Writing, code and the live radio sound (static, whistles, pips, drones) are original and made in WebAudio.
+    Island paintings: GPT Image via Higgsfield. Voices: ElevenLabs text-to-speech via Higgsfield.</p>
+  </div>
+</div>
+
+<script src="stations.js?v=1"></script>
+<script>
+(() => {
+  const FMIN = 2.0, FMAX = 12.0, W = 0.5, KW = 0.16;
+  const qs = new URLSearchParams(location.search);
+  const NEED = qs.has('fast') ? 0.15 : 0.7;   // fraction of a broadcast you must hear to log it
+  const ST = window.STATIONS, K = window.KEEPER;
+  const ALL = [...ST, K];
+  let f = 2.4, target = 2.4, ac = null, master, statG, statF, whistle, whistleG, pipG, t0 = 0, started = false;
+  const save = JSON.parse(localStorage.getItem('ffn-save') || '{}');
+  const heard = {}; ALL.forEach(s => heard[s.id] = new Set(save[s.id] || []));
+  let t0wall = 0;
+  let unlocked = !!save.unlocked, ended = !!save.ended, endShown = false;
+  const imgs = {}; ALL.forEach(s => { const im = new Image(); im.src = s.img; imgs[s.id] = im; });
+  const radioImg = new Image(); radioImg.src = 'img/8.jpg';
+
+  // ---------- dial UI ----------
+  const scale = document.getElementById('scale'), needle = document.getElementById('needle'), wrap = document.getElementById('scaleWrap');
+  const pct = x => (x - FMIN) / (FMAX - FMIN) * 100;
+  function buildScale() {
+    scale.innerHTML = '';
+    for (let x = FMIN; x <= FMAX + 1e-6; x += 0.2) {
+      const major = Math.abs(x - Math.round(x)) < 1e-6;
+      const t = document.createElement('div'); t.className = 'tick';
+      t.style.left = pct(x) + '%'; t.style.height = major ? '22px' : '10px'; scale.appendChild(t);
+      if (major) { const n = document.createElement('div'); n.className = 'num'; n.style.left = pct(x) + '%'; n.textContent = Math.round(x); scale.appendChild(n); }
+    }
+    ST.forEach(s => { if (heard[s.id].size || logged(s)) { const l = document.createElement('div'); l.className = 'isl'; l.style.left = pct(s.f) + '%'; l.textContent = s.name.replace('The ', ''); scale.appendChild(l); } });
+    if (unlocked) { const l = document.createElement('div'); l.className = 'isl hidden'; l.style.left = pct(K.f) + '%'; l.style.top = '18px'; l.textContent = '?'; scale.appendChild(l); }
+  }
+  const logEl = document.getElementById('log');
+  function buildLog() {
+    logEl.innerHTML = '';
+    [...ST, ...(unlocked ? [K] : [])].forEach(s => {
+      const d = document.createElement('div'); d.className = 'slot' + (logged(s) ? ' done' : ''); d.id = 'slot-' + s.id;
+      d.innerHTML = `<span>${heard[s.id].size ? s.name : '· · ·'}</span><i></i>`; logEl.appendChild(d);
+    });
+  }
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  function setTarget(v) { target = clamp(v, FMIN, FMAX); }
+  let drag = null;
+  wrap.addEventListener('pointerdown', e => { drag = 'scale'; wrap.setPointerCapture(e.pointerId); fromScale(e); });
+  wrap.addEventListener('pointermove', e => { if (drag === 'scale') fromScale(e); });
+  function fromScale(e) { const r = wrap.getBoundingClientRect(); setTarget(FMIN + (e.clientX - r.left) / r.width * (FMAX - FMIN)); }
+  const knob = document.getElementById('knob'); let kx = 0, kAng = 0;
+  knob.addEventListener('pointerdown', e => { drag = 'knob'; kx = e.clientX + e.clientY; knob.setPointerCapture(e.pointerId); });
+  knob.addEventListener('pointermove', e => { if (drag !== 'knob') return; const v = e.clientX - e.clientY; const d = v - kx; kx = v; setTarget(target + d * 0.006); });
+  addEventListener('pointerup', () => drag = null);
+  addEventListener('wheel', e => { setTarget(target + Math.sign(e.deltaY || e.deltaX) * (e.shiftKey ? 0.01 : 0.04)); }, { passive: true });
+  addEventListener('keydown', e => {
+    const st = e.shiftKey ? 0.01 : 0.05;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { setTarget(target + st); e.preventDefault(); }
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { setTarget(target - st); e.preventDefault(); }
+  });
+
+  // ---------- audio ----------
+  function noiseBuf(sec) { const b = ac.createBuffer(1, ac.sampleRate * sec, ac.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return b; }
+  function curve(k) { const n = 1024, c = new Float32Array(n); for (let i = 0; i < n; i++) { const x = i * 2 / n - 1; c[i] = (1 + k) * x / (1 + k * Math.abs(x)); } return c; }
+  async function load(s) {
+    const b = await fetch(s.audio).then(r => r.arrayBuffer()).then(a => ac.decodeAudioData(a));
+    s.dur = b.duration;
+    const pad = 3.5, L = Math.ceil((b.duration + pad) * ac.sampleRate);
+    const pb = ac.createBuffer(1, L, ac.sampleRate); pb.getChannelData(0).set(b.getChannelData(0).subarray(0, Math.min(b.length, L)));
+    s.L = pb.duration;
+    const all = s.lines.join(' ').length; let acc = 0;
+    s.cues = s.lines.map(l => { const st = acc / all * s.dur; acc += l.length + 1; return st; });
+    const src = ac.createBufferSource(); src.buffer = pb; src.loop = true;
+    s.filt = ac.createBiquadFilter(); s.filt.type = 'lowpass'; s.filt.frequency.value = 3000;
+    s.hp = ac.createBiquadFilter(); s.hp.type = 'highpass'; s.hp.frequency.value = 260;
+    s.dist = ac.createWaveShaper(); s.dist.curve = curve(1.5);
+    s.g = ac.createGain(); s.g.gain.value = 0;
+    src.connect(s.hp).connect(s.filt).connect(s.dist).connect(s.g).connect(master);
+    // each station has its own carrier drone (two detuned sines in its own key)
+    const base = 70 + (s.hue % 90);
+    s.dg = ac.createGain(); s.dg.gain.value = 0; s.dg.connect(master);
+    [1, 1.5, 2.01].forEach((m, i) => { const o = ac.createOscillator(); o.type = i ? 'sine' : 'triangle'; o.frequency.value = base * m; const g = ac.createGain(); g.gain.value = i ? 0.25 : 0.4; o.connect(g).connect(s.dg); o.start(); });
+    s.src = src;
+  }
+  async function startAudio() {
+    ac = new (window.AudioContext || window.webkitAudioContext)();
+    const comp = ac.createDynamicsCompressor(); comp.connect(ac.destination);
+    master = ac.createGain(); master.gain.value = 0.9; master.connect(comp);
+    const n = ac.createBufferSource(); n.buffer = noiseBuf(3); n.loop = true;
+    statF = ac.createBiquadFilter(); statF.type = 'bandpass'; statF.frequency.value = 1800; statF.Q.value = 0.6;
+    statG = ac.createGain(); statG.gain.value = 0.2;
+    // slow amplitude wobble on static (fading in and out like the ionosphere)
+    const lfo = ac.createOscillator(); lfo.frequency.value = 0.23; const lg = ac.createGain(); lg.gain.value = 0.06; lfo.connect(lg).connect(statG.gain); lfo.start();
+    n.connect(statF).connect(statG).connect(master); n.start();
+    whistle = ac.createOscillator(); whistle.type = 'sine'; whistleG = ac.createGain(); whistleG.gain.value = 0;
+    whistle.connect(whistleG).connect(master); whistle.start();
+    pipG = ac.createGain(); pipG.gain.value = 0; pipG.connect(master);
+    await Promise.all(ALL.map(load));
+    t0 = ac.currentTime + 0.1; t0wall = Date.now() + 100;
+    ALL.forEach(s => s.src.start(t0, (s.phase * s.L) % s.L));
+    schedulePips();
+  }
+  // The keeper's counting: six pips every few seconds, heard at the gap frequency before the station unlocks.
+  function schedulePips() {
+    const o = ac.createOscillator(); o.type = 'square'; o.frequency.value = 880; const g = ac.createGain(); g.gain.value = 0; o.connect(g).connect(pipG); o.start();
+    let t = ac.currentTime + 1;
+    for (let rep = 0; rep < 400; rep++) { for (let i = 0; i < 6; i++) { g.gain.setValueAtTime(0.18, t + i * 0.45); g.gain.setValueAtTime(0, t + i * 0.45 + 0.12); } t += 7; }
+  }
+  // station profile: wide tails so neighbours bleed into each other (crosstalk); the hidden station is a narrow gaussian
+  const strength = s => s === K ? Math.exp(-Math.pow((f - s.f) / KW, 2)) : 1 / (1 + Math.pow((f - s.f) / W, 2));
+  const pos = s => ((ac.currentTime - t0) + s.phase * s.L) % s.L;
+  const logged = s => s.dur ? heard[s.id].size >= Math.floor(s.dur * NEED) : (save.done || []).includes(s.id);
+
+  // ---------- visuals ----------
+  const cv = document.getElementById('scr'), cx = cv.getContext('2d');
+  const noise = document.createElement('canvas'); noise.width = 256; noise.height = 256;
+  { const n = noise.getContext('2d'), id = n.createImageData(256, 256); for (let i = 0; i < id.data.length; i += 4) { const v = Math.random() * 255; id.data[i] = id.data[i + 1] = id.data[i + 2] = v; id.data[i + 3] = 255; } n.putImageData(id, 0, 0); }
+  function fit() { const r = cv.getBoundingClientRect(), d = Math.min(devicePixelRatio || 1, 2); cv.width = r.width * d; cv.height = r.height * d; }
+  addEventListener('resize', fit);
+  function cover(im, alpha, jitter) {
+    if (!im.complete || !im.naturalWidth || alpha <= 0.01) return;
+    const cw = cv.width, ch = cv.height, s = Math.max(cw / im.naturalWidth, ch / im.naturalHeight);
+    const w = im.naturalWidth * s, h = im.naturalHeight * s, x0 = (cw - w) / 2, y0 = (ch - h) / 2;
+    cx.globalAlpha = alpha;
+    if (jitter < 0.5) { cx.drawImage(im, x0, y0, w, h); return; }
+    const band = Math.max(6, ch / 60);
+    for (let y = 0; y < ch; y += band) {
+      const dx = (Math.random() - 0.5) * jitter * (Math.random() < 0.15 ? 4 : 1);
+      const sy = (y - y0) / s, sh = band / s;
+      cx.drawImage(im, 0, sy, im.naturalWidth, sh, x0 + dx, y, w, band + 1);
+    }
+  }
+  const label = document.getElementById('label'), subs = document.getElementById('subs'), mneedle = document.getElementById('mneedle'), hint = document.getElementById('hint');
+  function lineAt(s) { const p = pos(s); if (p > s.dur) return ''; let i = 0; while (i + 1 < s.cues.length && s.cues[i + 1] <= p) i++; return s.lines[i]; }
+  let lastLog = '', tickPh = 0;
+
+  function frame() {
+    requestAnimationFrame(frame);
+    if (path && ac) { const pt = ac.currentTime - t0; f = pathF(path, pt); target = f; if (popts.unlockAt && pt >= popts.unlockAt && !unlocked) window.__radio.unlock(); if (popts.endAt && pt >= popts.endAt && !ended) showEnd(); } else f += (target - f) * 0.18;
+    needle.style.left = `calc(${pct(f)}% - 1px)`;
+    kAng = (f - FMIN) * 120; knob.style.transform = `rotate(${kAng}deg)`;
+    const live = unlocked ? ALL : ST;
+    const ss = live.map(s => ({ s, v: strength(s) })).sort((a, b) => b.v - a.v);
+    const a = ss[0], b = ss[1];
+    const sig = Math.min(1, a.v + b.v * 0.5);
+    mneedle.style.transform = `rotate(${-60 + sig * 120}deg)`;
+    const gapK = !unlocked ? strength(K) : 0;
+    if (started && ac) {
+      const T = ac.currentTime;
+      live.forEach(s => {
+        const v = strength(s);
+        s.g.gain.setTargetAtTime(Math.pow(v, 1.3) * 1.1, T, 0.05);
+        s.dg.gain.setTargetAtTime(v * 0.035, T, 0.1);
+        s.filt.frequency.setTargetAtTime(500 + 5200 * v * v, T, 0.05);
+        if (v > 0.6 && s.dur) { const p = pos(s); if (p < s.dur) { const k = Math.floor(p); if (!heard[s.id].has(k)) { heard[s.id].add(k); onHeard(s); } } }
+      });
+      statG.gain.setTargetAtTime(0.05 + 0.32 * (1 - sig) + 0.08 * Math.min(a.v, b.v) * 4, T, 0.05);
+      statF.frequency.setTargetAtTime(900 + f * 220, T, 0.1);
+      // heterodyne whistle: loud when you are near a station but not on it
+      const off = Math.abs(f - a.s.f);
+      whistle.frequency.setTargetAtTime(180 + off * 5200, T, 0.03);
+      whistleG.gain.setTargetAtTime(a.v * (1 - a.v) * 0.18, T, 0.05);
+      pipG.gain.setTargetAtTime(gapK * 0.5, T, 0.08);
+    }
+    // picture
+    if (!cv.width) fit();
+    cx.globalAlpha = 1; cx.fillStyle = '#05080a'; cx.fillRect(0, 0, cv.width, cv.height);
+    cover(radioImg, 0.35 * (1 - sig), 0);
+    const tot = a.v + b.v + 1e-6;
+    cover(imgs[b.s.id], (b.v / tot) * sig * 0.9, (1 - b.v) * 40);
+    cover(imgs[a.s.id], (a.v / tot) * Math.min(1, sig * 1.2), (1 - a.v) * 40);
+    if (gapK > 0.2) cover(imgs[K.id], gapK * 0.18, 30);
+    cx.globalAlpha = Math.min(0.85, 0.07 + (1 - sig) * 0.75); cx.globalCompositeOperation = 'overlay';
+    const nx = Math.random() * 256, ny = Math.random() * 256; cx.fillStyle = cx.createPattern(noise, 'repeat');
+    cx.save(); cx.translate(-nx, -ny); cx.fillRect(nx, ny, cv.width, cv.height); cx.restore();
+    cx.globalCompositeOperation = 'source-over';
+    cx.globalAlpha = 0.12; cx.fillStyle = '#000'; for (let y = 0; y < cv.height; y += 4) cx.fillRect(0, y, cv.width, 1);
+    cx.globalAlpha = 1;
+    // label and subtitles
+    label.style.opacity = a.v > 0.45 ? a.v : 0;
+    label.innerHTML = `<small>${a.s.f.toFixed(2)} MHz</small>${a.s.name}`;
+    if (started && ac && a.s.cues) {
+      let h = '';
+      if (a.v > 0.25) { const l = lineAt(a.s); if (l) h += `<div class="sub" style="opacity:${Math.min(1, a.v * 1.3)}">${garble(l, a.v)}</div><br>`; }
+      if (b.v > 0.12) { const l = lineAt(b.s); if (l) h += `<div class="sub b" style="opacity:${Math.min(.8, b.v * 1.4)}">${garble(l, b.v)}</div>`; }
+      if (gapK > 0.35) h = `<div class="sub" style="opacity:${gapK}">[six faint pips, like someone counting]</div>` + h;
+      if (!h && sig < 0.15) h = `<div class="sub" style="opacity:.5">[static]</div>`;
+      subs.innerHTML = h;
+    }
+  }
+  // words drop out of the subtitle when the signal is weak, like the audio does
+  function garble(l, v) { if (v > 0.8) return l; const keep = Math.max(0.15, v); return l.split(' ').map((w, i) => ((i * 7919 + w.length * 31) % 100) / 100 < keep ? w : '—').join(' '); }
+
+  function onHeard(s) {
+    const slot = document.getElementById('slot-' + s.id);
+    if (heard[s.id].size === 1) { buildScale(); buildLog(); }
+    else if (slot) { slot.querySelector('i').style.width = Math.min(100, heard[s.id].size / Math.floor(s.dur * NEED) * 100) + '%'; }
+    persist();
+    if (logged(s) && slot && !slot.classList.contains('done')) {
+      slot.classList.add('done'); flash(`Logged: ${s.name}`);
+      if (s === K) { setTimeout(showEnd, Math.max(1500, (s.dur - pos(s)) * 1000 + 1500)); return; }
+      if (!unlocked && ST.every(logged)) { unlocked = true; persist(); buildScale(); buildLog(); flash('Something is broadcasting in the gap between Marrow Isle and Little Hush.', 9000); }
+    }
+  }
+  let flashT; function flash(t, ms = 3500) { hint.textContent = t; hint.style.opacity = 1; clearTimeout(flashT); flashT = setTimeout(() => { hint.style.opacity = .65; hint.textContent = unlocked && !ended ? 'Find the station between stations.' : 'Turn the dial. Stay on a station to log it.'; }, ms); }
+  function persist() { const o = { unlocked, ended }; ALL.forEach(s => o[s.id] = [...heard[s.id]]); localStorage.setItem('ffn-save', JSON.stringify(o)); }
+  function showEnd() { ended = true; persist(); document.getElementById('end').classList.remove('hide'); }
+  document.getElementById('keep').onclick = () => document.getElementById('end').classList.add('hide');
+  document.getElementById('reset').onclick = () => { localStorage.removeItem('ffn-save'); location.reload(); };
+  document.getElementById('start').onclick = async () => {
+    const btn = document.getElementById('start'); btn.textContent = 'WARMING UP THE VALVES…'; btn.disabled = true;
+    await startAudio(); started = true; buildScale(); buildLog();
+    document.getElementById('title').classList.add('hide');
+    flash('Turn the dial. Stay on a station to log it.', 6000);
+  };
+  // Scripted dial path (used only to record the trailer): [[seconds since switch-on, MHz], ...], eased between points.
+  let path = null, popts = {};
+  function pathF(p, t) { if (t <= p[0][0]) return p[0][1]; for (let i = 1; i < p.length; i++) if (t < p[i][0]) { const [ta, fa] = p[i - 1], [tb, fb] = p[i]; let u = (t - ta) / (tb - ta); u = u * u * (3 - 2 * u); return fa + (fb - fa) * u; } return p[p.length - 1][1]; }
+  window.__radio = { play: (p, o = {}) => { path = p; popts = o; }, unlock: () => { ST.forEach(s => { for (let k = 0; k < s.dur; k++) heard[s.id].add(k); }); unlocked = true; buildScale(); buildLog(); flash('Something is broadcasting in the gap between Marrow Isle and Little Hush.', 9000); }, end: showEnd, get t0wall() { return t0wall; }, setF: v => { target = f = v; }, get f() { return f; }, heard, get unlocked() { return unlocked; }, logged: () => ALL.filter(logged).map(s => s.id) };
+  buildScale(); buildLog(); fit(); frame();
+})();
+</script>
+</body>
+</html>
