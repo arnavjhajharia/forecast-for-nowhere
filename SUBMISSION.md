@@ -25,7 +25,7 @@ radio. There are no menus or buttons during play, only listening.
 
 **Why it fits "Experimental & Open Format"** (paste after the description if there is room):
 - Break the mold: the whole interface is one radio dial. There are no menus, buttons or choices during play, only tuning and listening.
-- Clear intent: a lonely, funny shipping forecast for places that don't exist. Six voices, one shared mystery (the lighthouse), and a seventh station you earn by listening.
+- Clear intent: a lonely, strange shipping forecast for places that don't exist. Six voices, one shared mystery (the lighthouse), and a seventh station you earn by listening.
 - Craft: the sound mix IS the game state. Signal strength drives voice gain, filter cutoff, distortion, static, whistle pitch,
   picture tearing and subtitle dropout all at once. Progress comes from attention (time actually spent listening), not from reflexes.
 - The gameplay video opens on the dial sweeping through static into the first station (the core mechanic in the first 8 s).
