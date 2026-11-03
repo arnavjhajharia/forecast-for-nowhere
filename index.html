@@ -107,9 +107,13 @@
   const heard = {}; ALL.forEach(s => heard[s.id] = new Set(save[s.id] || []));
   let t0wall = 0;
   let unlocked = !!save.unlocked, ended = !!save.ended, endShown = false;
-  const imgs = {}; ALL.forEach(s => { const im = new Image(); im.src = s.img; imgs[s.id] = im; });
+  // audio + the radio image first (audio is what starts the game); station images (~3.6 MB) follow once the radio image lands
   const pre = {}; ALL.forEach(s => pre[s.id] = fetch(s.audio + '?v=2').then(r => r.arrayBuffer()));
-  const radioImg = new Image(); radioImg.src = 'img/8.jpg';
+  const radioImg = new Image();
+  const imgs = {}; ALL.forEach(s => imgs[s.id] = new Image());
+  { let go = false; const rest = () => { if (go) return; go = true; ALL.forEach(s => imgs[s.id].src = s.img); };
+    radioImg.onload = radioImg.onerror = rest; setTimeout(rest, 4000); }
+  radioImg.src = 'img/8.jpg';
 
   // ---------- dial UI ----------
   const scale = document.getElementById('scale'), needle = document.getElementById('needle'), wrap = document.getElementById('scaleWrap');
