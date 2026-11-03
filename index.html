@@ -105,6 +105,7 @@
   let t0wall = 0;
   let unlocked = !!save.unlocked, ended = !!save.ended, endShown = false;
   const imgs = {}; ALL.forEach(s => { const im = new Image(); im.src = s.img; imgs[s.id] = im; });
+  const pre = {}; ALL.forEach(s => pre[s.id] = fetch(s.audio + '?v=2').then(r => r.arrayBuffer()));
   const radioImg = new Image(); radioImg.src = 'img/8.jpg';
 
   // ---------- dial UI ----------
@@ -150,7 +151,7 @@
   function noiseBuf(sec) { const b = ac.createBuffer(1, ac.sampleRate * sec, ac.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return b; }
   function curve(k) { const n = 1024, c = new Float32Array(n); for (let i = 0; i < n; i++) { const x = i * 2 / n - 1; c[i] = (1 + k) * x / (1 + k * Math.abs(x)); } return c; }
   async function load(s) {
-    const b = await fetch(s.audio).then(r => r.arrayBuffer()).then(a => ac.decodeAudioData(a));
+    const ab = await pre[s.id]; const b = await new Promise((res, rej) => ac.decodeAudioData(ab.slice(0), res, rej));
     s.dur = b.duration;
     const pad = 3.5, L = Math.ceil((b.duration + pad) * ac.sampleRate);
     const pb = ac.createBuffer(1, L, ac.sampleRate); pb.getChannelData(0).set(b.getChannelData(0).subarray(0, Math.min(b.length, L)));
@@ -168,6 +169,9 @@
     s.dg = ac.createGain(); s.dg.gain.value = 0; s.dg.connect(master);
     [1, 1.5, 2.01].forEach((m, i) => { const o = ac.createOscillator(); o.type = i ? 'sine' : 'triangle'; o.frequency.value = base * m; const g = ac.createGain(); g.gain.value = i ? 0.25 : 0.4; o.connect(g).connect(s.dg); o.start(); });
     s.src = src;
+    // join the broadcast already in progress, so every station runs on one shared clock
+    const now = ac.currentTime; src.start(now, ((now - t0) + s.phase * s.L) % s.L); s.ready = true;
+    if (heard[s.id].size) { buildScale(); buildLog(); }
   }
   async function startAudio() {
     ac = new (window.AudioContext || window.webkitAudioContext)();
@@ -182,10 +186,9 @@
     whistle = ac.createOscillator(); whistle.type = 'sine'; whistleG = ac.createGain(); whistleG.gain.value = 0;
     whistle.connect(whistleG).connect(master); whistle.start();
     pipG = ac.createGain(); pipG.gain.value = 0; pipG.connect(master);
-    await Promise.all(ALL.map(load));
-    t0 = ac.currentTime + 0.1; t0wall = Date.now() + 100;
-    ALL.forEach(s => s.src.start(t0, (s.phase * s.L) % s.L));
+    t0 = ac.currentTime; t0wall = Date.now();
     schedulePips();
+    return Promise.all(ALL.map(load));
   }
   // The keeper's counting: six pips every few seconds, heard at the gap frequency before the station unlocks.
   function schedulePips() {
@@ -235,6 +238,7 @@
     if (started && ac) {
       const T = ac.currentTime;
       live.forEach(s => {
+        if (!s.ready) return;
         const v = strength(s);
         s.g.gain.setTargetAtTime(Math.pow(v, 1.3) * 1.1, T, 0.05);
         s.dg.gain.setTargetAtTime(v * 0.035, T, 0.1);
@@ -266,11 +270,12 @@
     // label and subtitles
     label.style.opacity = a.v > 0.45 ? a.v : 0;
     label.innerHTML = `<small>${a.s.f.toFixed(2)} MHz</small>${a.s.name}`;
-    if (started && ac && a.s.cues) {
+    if (started && ac) {
       let h = '';
-      if (a.v > 0.25) { const l = lineAt(a.s); if (l) h += `<div class="sub" style="opacity:${Math.min(1, a.v * 1.3)}">${garble(l, a.v)}</div><br>`; }
-      if (b.v > 0.12) { const l = lineAt(b.s); if (l) h += `<div class="sub b" style="opacity:${Math.min(.8, b.v * 1.4)}">${garble(l, b.v)}</div>`; }
+      if (a.v > 0.25) { const l = a.s.cues && lineAt(a.s); if (l) h += `<div class="sub" style="opacity:${Math.min(1, a.v * 1.3)}">${garble(l, a.v)}</div><br>`; }
+      if (b.v > 0.12) { const l = b.s.cues && lineAt(b.s); if (l) h += `<div class="sub b" style="opacity:${Math.min(.8, b.v * 1.4)}">${garble(l, b.v)}</div>`; }
       if (gapK > 0.35) h = `<div class="sub" style="opacity:${gapK}">[six faint pips, like someone counting]</div>` + h;
+      if (!h && a.v > 0.5 && !a.s.ready) h = `<div class="sub" style="opacity:.6">[signal coming in…]</div>`;
       if (!h && sig < 0.15) h = `<div class="sub" style="opacity:.5">[static]</div>`;
       subs.innerHTML = h;
     }
@@ -296,7 +301,8 @@
   document.getElementById('reset').onclick = () => { localStorage.removeItem('ffn-save'); location.reload(); };
   document.getElementById('start').onclick = async () => {
     const btn = document.getElementById('start'); btn.textContent = 'WARMING UP THE VALVES…'; btn.disabled = true;
-    await startAudio(); started = true; buildScale(); buildLog();
+    const loaded = startAudio(); started = true;
+    loaded.then(() => { buildScale(); buildLog(); });
     document.getElementById('title').classList.add('hide');
     flash('Turn the dial. Stay on a station to log it.', 6000);
   };
